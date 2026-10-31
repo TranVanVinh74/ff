@@ -30,7 +30,6 @@ node1\dht11.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 node1\dht11.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 node1\dht11.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 node1\dht11.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
-node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h
 node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
 node1\dht11.o: ../Core/Inc/FreeRTOSConfig.h
 node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
@@ -40,7 +39,3 @@ node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3/
 node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
 node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
-node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h
-node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h
-node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h
-node1\dht11.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h

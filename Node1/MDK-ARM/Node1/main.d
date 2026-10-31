@@ -44,5 +44,6 @@ node1\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h
 node1\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h
 node1\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h
 node1\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h
+node1\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 node1\main.o: ../Lib/DHT11.h
 node1\main.o: ../Lib/MQ5.h

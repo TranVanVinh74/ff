@@ -22,17 +22,25 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include "DHT11.h"
 #include "MQ5.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+
 typedef struct {
     uint8_t temperature;
     uint8_t humidity;
     uint16_t gas_raw;
 } SensorData_t;
+// Interface Driver tổng quát
+typedef struct {
+    const char *name;
+    bool (*init)(void);
+    bool (*read)(void *out_data);
+} Sensor_Driver_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -91,7 +99,47 @@ void StartDefaultTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static bool MQ5_Driver_Init(void) {
+    MQ5_Init(&hadc1);
+    return true;
+}
 
+static bool MQ5_Driver_Read(void *out_data) {
+    if (out_data == NULL) return false;
+    *(uint16_t *)out_data = MQ5_ReadAverage(8);
+    return true;
+}
+
+// --- ADAPTER CHO DHT11 ---
+static bool DHT11_Driver_Init(void) {
+    DHT11_Init(&htim2);
+    return true;
+}
+
+static bool DHT11_Driver_Read(void *out_data) {
+    if (out_data == NULL) return false;
+    return DHT11_Read((DHT11_Data_t *)out_data);
+}
+
+// --- KHAI BÁO CÁC DRIVER CỤ THỂ ---
+Sensor_Driver_t dev_mq5 = {
+    .name = "MQ-5 Gas Sensor",
+    .init = MQ5_Driver_Init,
+    .read = MQ5_Driver_Read
+};
+
+Sensor_Driver_t dev_dht11 = {
+    .name = "DHT11 Temp/Hum",
+    .init = DHT11_Driver_Init,
+    .read = DHT11_Driver_Read
+};
+
+// Gom tất cả vào một mảng thiết bị để quản lý tập trung
+#define TOTAL_SENSORS 2
+Sensor_Driver_t *sensor_bus[TOTAL_SENSORS] = {
+    &dev_mq5,
+    &dev_dht11
+};
 /* USER CODE END 0 */
 
 /**
@@ -128,8 +176,11 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 HAL_TIM_Base_Start(&htim2);// Bat timer 2
-DHT11_Init(&htim2);
-  MQ5_Init(&hadc1);
+for (int i = 0; i < TOTAL_SENSORS; i++) {
+      if (sensor_bus[i]->init != NULL) {
+          sensor_bus[i]->init();
+      }
+  }
 /*Cau hinh bo loc CAN */
 CAN_FilterTypeDef canFilterConfig;
   canFilterConfig.FilterBank = 0;
@@ -282,7 +333,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -395,11 +446,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PA2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+GPIO_InitStruct.Pin = GPIO_PIN_2;
+GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+GPIO_InitStruct.Pull = GPIO_PULLUP;
+HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -409,56 +459,37 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void Task_Sensor(void *pvParameters)
 {
-    SensorData_t sensorData = {0};
-    DHT11_Data_t dhtData = {0};
-
-    // Cho cảm biến ổn định sau khi bật nguồn.
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
+    SensorData_t sensorData;
+    DHT11_Data_t dhtRaw;
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(2000);
+    const TickType_t xFrequency = pdMS_TO_TICKS(500);
 
     for (;;)
     {
-        g_sensorLoops++;
+        // 1. Đọc dữ liệu khí gas thông qua Driver MQ-5
+        dev_mq5.read(&sensorData.gas_raw);
 
-        g_sensorStage = 1;
-        sensorData.gas_raw = MQ5_ReadAverage(8);
-
-        g_sensorStage = 2;
-
-        // Giữ nguyên quy ước kiểm tra thành công của code bạn.
-        // Cần xem DHT11.c để xác nhận hàm trả khác 0 khi thành công.
-        if (DHT11_Read(&dhtData))
+        // 2. Đọc dữ liệu môi trường thông qua Driver DHT11
+        if (dev_dht11.read(&dhtRaw))
         {
-            sensorData.temperature = (uint8_t)dhtData.Temperature;
-            sensorData.humidity = (uint8_t)dhtData.Humidity;
-            g_dhtSuccessCount++;
+            sensorData.temperature = (uint8_t)dhtRaw.Temperature;
+            sensorData.humidity    = (uint8_t)dhtRaw.Humidity;
         }
 
-        g_sensorStage = 3;
-
-        // Cập nhật biến để quan sát trong Watch.
-        g_sensorDebug.temperature = sensorData.temperature;
-        g_sensorDebug.humidity = sensorData.humidity;
-        g_sensorDebug.gas_raw = sensorData.gas_raw;
+        // Cập nhật biến debug và đẩy vào CAN Queue
+        g_sensorDebug = sensorData;
 
         if (xSensorQueue != NULL)
         {
-            xQueueSend(
-                xSensorQueue,
-                &sensorData,
-                pdMS_TO_TICKS(10)
-            );
+            xQueueSend(xSensorQueue, &sensorData, pdMS_TO_TICKS(10));
         }
 
-        g_sensorStage = 4;
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
 
 /**
- * @brief Task ch? d? li?u t? Queue v� g?i CAN Frame l�n m?ng
+ * @brief 
  */
 void Task_CAN_TX(void *pvParameters)
 {
