@@ -1,27 +1,11 @@
-# STM32 CAN + FreeRTOS: staged reconstruction
+# Node3 A7680C modem driver
 
-This branch prepares a baseline from the existing completed project.
-The original implementation remains on `backup/full-code`; existing history is preserved.
+Branch: `feature/hal-gpio-uart`, based on `develop` project skeleton.
 
-## Three nodes
-- Node1: DHT11 and gas sensor acquisition; CAN ID 0x100.
-- Node2: TFT display and fan relay; CAN command ID 0x200.
-- Node3: CAN gateway and A7680C SMS alerts.
+This branch restores only Node3 A7680C modem driver from `backup/full-code` and the corresponding Keil source entries/include paths. The other nodes remain skeletons.
 
-## Current baseline
-STM32Cube clock, GPIO, peripheral initialization, HAL, CMSIS, FreeRTOS,
-HAL timer timebase and Keil project files are retained.
-Application drivers, application tasks, IPC creation and CAN start/notifications
-are intentionally absent. The scheduler runs its idle task only.
+Application tasks, IPC and CAN integration are intentionally not activated. These belong to later task and integration branches. Driver interfaces and behavior are preserved from the supplied implementation; no new hardware validation is claimed.
 
-## Next stages
-1. Agree driver interfaces, pin mapping and shared IPC types.
-2. Add and test drivers on feature/hal-* branches; review into develop.
-3. Add isolated tasks on feature/task-* branches; review into develop.
-4. Connect IPC and tasks on integration/system-v1.
-5. Test all three boards, then release to main.
+Validation: all project source paths exist and C preprocessing succeeds using the project include paths. Keil ARM Compiler 5 build/link and board tests remain required.
 
-The CubeMX layout is retained to preserve Keil paths. Application code will be
-split into dedicated source/header files as it is reintroduced.
-Build each Node's .uvprojx in Keil before accepting this baseline.
-This baseline has not been tested on hardware.
+Original complete code remains on `backup/full-code`. The original `main` history is preserved.
